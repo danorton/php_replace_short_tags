@@ -132,7 +132,7 @@ while($filenames) {
 exit(0);
 
 function die_with_status($status, $message) {
-  fputs(STDERR,$message);
+  fputs(STDERR,$message. "\n");
   exit($status);
 }
 
