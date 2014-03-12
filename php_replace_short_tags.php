@@ -99,7 +99,8 @@ if(!ini_get('short_open_tag')) {
 
 while($filenames) {
   $source_filename = array_shift($filenames);
-  $source = file_get_contents($source_filename) or
+  $source = file_get_contents($source_filename);
+  if ($source === false)
     die_with_status(1,"Unable to read input file");
 
   $changes = replace_short_open_tags($source,!$not_echo_tags);
@@ -131,7 +132,7 @@ while($filenames) {
 exit(0);
 
 function die_with_status($status, $message) {
-  fputs(STDERR,$message);
+  fputs(STDERR,$message. "\n");
   exit($status);
 }
 
