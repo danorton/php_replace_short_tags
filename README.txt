@@ -18,4 +18,4 @@
   
    php_replace_short_tags [-s|--skip-echo-tags] [-q|--quiet] [-d|--debug] [INFILE [OUTFILE]]
   
-   php_replace_short_tags --overwrite [-s|--skip-echo-tags] [-q|--quiet] [-d|--debug] INOUTFILE [INOUTFILE ...]
+   php_replace_short_tags --overwrite [-r|--recursively] [-s|--skip-echo-tags] [-q|--quiet] [-d|--debug] INOUTFILE [INOUTFILE ...]

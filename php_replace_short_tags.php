@@ -30,6 +30,7 @@ $debug = FALSE;
 $quiet = 0;
 $overwrite = 0;
 $not_echo_tags = 0;
+$recursively = 0;
 
 $myname = array_shift($argv);
 
@@ -66,6 +67,10 @@ while(count($argv) && (substr($argv[0],0,1) == "-")) {
     case "--overwrite":
       $overwrite++;
       break;
+    case "-r":
+    case "--recursively":
+      $recursively++;
+      break;
     default:
       usage("Unrecognized option: \"" . $option . "\"");
   }
@@ -75,6 +80,11 @@ if(!$debug) {
 }
 
 $filenames = $argv;
+if ($recursively) {
+    foreach ($argv as $argument) {
+        $filenames = array_merge($filenames, getFiles($argument));
+    }
+}
 $file_count = count($filenames);
 if($overwrite) {
   $file_count or
@@ -234,4 +244,32 @@ function replace_short_open_tags(&$source, $echo_tags = TRUE) {
   }
 
   return $change_count;
+}
+
+/**
+ * Returns all files in a folder and all of its subfolders.
+ *
+ * @param string $path
+ * @return array
+ */
+function getFiles($path)
+{
+    $results = array();
+
+    if (is_dir($path)) {
+        $files = scandir($path);
+        foreach ($files as $file) {
+            //add DIRECTORY_SEPARATOR if there is none at the end of $path
+            $subPath = $path . (DIRECTORY_SEPARATOR == substr($path, -1) ? '' : DIRECTORY_SEPARATOR) . $file;
+            if (!is_dir($subPath)) {
+                $results[] = $subPath;
+            } else if ($file != "." && $file != "..") {
+                $results = array_merge($results, getFiles($subPath));
+            }
+        }
+    } else {
+        $results[] = $path;
+    }
+
+    return $results;
 }
