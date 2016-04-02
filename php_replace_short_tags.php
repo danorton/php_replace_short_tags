@@ -30,7 +30,8 @@ $debug = FALSE;
 $quiet = 0;
 $overwrite = 0;
 $not_echo_tags = 0;
-$recursively = 0;
+$recursive = 0;
+$filter = 0;
 
 $myname = array_shift($argv);
 
@@ -64,12 +65,17 @@ while(count($argv) && (substr($argv[0],0,1) == "-")) {
     case "--skip-echo-tags":
       $not_echo_tags++;
       break;
+    case "-o":
     case "--overwrite":
       $overwrite++;
       break;
     case "-r":
-    case "--recursively":
-      $recursively++;
+    case "--recursive":
+      $recursive++;
+      break;
+    case "-f":
+    case "--filter":
+      $filter++;
       break;
     default:
       usage("Unrecognized option: \"" . $option . "\"");
@@ -79,13 +85,16 @@ if(!$debug) {
   define('DEBUG',FALSE);
 }
 
-$filenames = $argv;
-if ($recursively) {
+$files = $argv;
+if ($recursive) {
     foreach ($argv as $argument) {
-        $filenames = array_merge($filenames, getFiles($argument));
+      $files = array_merge($files, getFiles($argument));
     }
 }
-$file_count = count($filenames);
+if ($filter) {
+  $files = preg_grep('/\.(inc|php|phtml|htm)$/', $files);
+}
+$file_count = count($files);
 if($overwrite) {
   $file_count or
     usage("Cannot overwrite STDIN");
@@ -94,7 +103,7 @@ else {
   ($file_count <= 2) or
     usage("Cannot process multiple files without \"--overwrite\"");
   if ($file_count == 0) {
-    $filenames = array("php://input");
+    $files = array("php://input");
   }
 }
 
@@ -107,8 +116,8 @@ if(!ini_get('short_open_tag')) {
 }
 
 
-while($filenames) {
-  $source_filename = array_shift($filenames);
+while ($files) {
+  $source_filename = array_shift($files);
   $source = file_get_contents($source_filename);
   if ($source === false)
     die_with_status(1,"Unable to read input file");
@@ -117,9 +126,8 @@ while($filenames) {
 
   if($overwrite) {
     $output_filename = $source_filename;
-  }
-  elseif(count($filenames)) {
-    $output_filename = array_shift($filenames);
+  } elseif (count($files)) {
+    $output_filename = array_shift($files);
   }
   else {
     $output_filename = "php://output";
@@ -190,7 +198,6 @@ function _token_name($token_id) {
  */
 function replace_short_open_tags(&$source, $echo_tags = TRUE) {
   $change_count = 0;  // the number of changes we made
-
   $tokens = token_get_all($source);
 
   // A pseudo-EOF token is necessary to correctly process
