@@ -30,6 +30,8 @@ $debug = FALSE;
 $quiet = 0;
 $overwrite = 0;
 $not_echo_tags = 0;
+$recursive = 0;
+$filter = 0;
 
 $myname = array_shift($argv);
 
@@ -63,8 +65,17 @@ while(count($argv) && (substr($argv[0],0,1) == "-")) {
     case "--skip-echo-tags":
       $not_echo_tags++;
       break;
+    case "-o":
     case "--overwrite":
       $overwrite++;
+      break;
+    case "-r":
+    case "--recursive":
+      $recursive++;
+      break;
+    case "-f":
+    case "--filter":
+      $filter++;
       break;
     default:
       usage("Unrecognized option: \"" . $option . "\"");
@@ -74,8 +85,16 @@ if(!$debug) {
   define('DEBUG',FALSE);
 }
 
-$filenames = $argv;
-$file_count = count($filenames);
+$files = $argv;
+if ($recursive) {
+    foreach ($argv as $argument) {
+      $files = array_merge($files, getFiles($argument));
+    }
+}
+if ($filter) {
+  $files = preg_grep('/\.(inc|php|phtml|htm)$/', $files);
+}
+$file_count = count($files);
 if($overwrite) {
   $file_count or
     usage("Cannot overwrite STDIN");
@@ -84,7 +103,7 @@ else {
   ($file_count <= 2) or
     usage("Cannot process multiple files without \"--overwrite\"");
   if ($file_count == 0) {
-    $filenames = array("php://input");
+    $files = array("php://input");
   }
 }
 
@@ -97,8 +116,8 @@ if(!ini_get('short_open_tag')) {
 }
 
 
-while($filenames) {
-  $source_filename = array_shift($filenames);
+while ($files) {
+  $source_filename = array_shift($files);
   $source = file_get_contents($source_filename);
   if ($source === false)
     die_with_status(1,"Unable to read input file");
@@ -107,9 +126,8 @@ while($filenames) {
 
   if($overwrite) {
     $output_filename = $source_filename;
-  }
-  elseif(count($filenames)) {
-    $output_filename = array_shift($filenames);
+  } elseif (count($files)) {
+    $output_filename = array_shift($files);
   }
   else {
     $output_filename = "php://output";
@@ -180,7 +198,6 @@ function _token_name($token_id) {
  */
 function replace_short_open_tags(&$source, $echo_tags = TRUE) {
   $change_count = 0;  // the number of changes we made
-
   $tokens = token_get_all($source);
 
   // A pseudo-EOF token is necessary to correctly process
@@ -234,4 +251,32 @@ function replace_short_open_tags(&$source, $echo_tags = TRUE) {
   }
 
   return $change_count;
+}
+
+/**
+ * Returns all files in a folder and all of its subfolders.
+ *
+ * @param string $path
+ * @return array
+ */
+function getFiles($path)
+{
+    $results = array();
+
+    if (is_dir($path)) {
+        $files = scandir($path);
+        foreach ($files as $file) {
+            //add DIRECTORY_SEPARATOR if there is none at the end of $path
+            $subPath = $path . (DIRECTORY_SEPARATOR == substr($path, -1) ? '' : DIRECTORY_SEPARATOR) . $file;
+            if (!is_dir($subPath)) {
+                $results[] = $subPath;
+            } else if ($file != "." && $file != "..") {
+                $results = array_merge($results, getFiles($subPath));
+            }
+        }
+    } else {
+        $results[] = $path;
+    }
+
+    return $results;
 }
